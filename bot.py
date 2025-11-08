@@ -6,11 +6,27 @@ import os
 # --- НАСТРОЙКА ЛОГИРОВАНИЯ ---
 # Переносим настройку в самое начало, чтобы она применялась ко всем импортируемым модулям.
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-    stream=sys.stdout,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", # Стандартный формат
+    level=logging.INFO, # Базовый уровень для всех логгеров
     datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[logging.StreamHandler(sys.stdout)] # Явно указываем обработчик
 )
+
+# --- Кастомная настройка форматов для чистоты логов ---
+# Создаем новый, короткий форматтер, который выводит только время и само сообщение.
+short_formatter = logging.Formatter("%(asctime)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+
+# Создаем новый обработчик, который будет использовать этот короткий форматтер.
+short_handler = logging.StreamHandler(sys.stdout)
+short_handler.setFormatter(short_formatter)
+
+# Применяем короткий формат к нужным нам логгерам.
+for logger_name in ["handlers.echo", "handlers.support_command", "httpx"]:
+    logger_to_customize = logging.getLogger(logger_name)
+    logger_to_customize.handlers = []  # Удаляем старые обработчики, чтобы избежать дублирования.
+    logger_to_customize.addHandler(short_handler)
+    logger_to_customize.propagate = False  # Запрещаем передавать сообщения "выше" корневому логгеру.
+
 
 # Удаляем дублирующийся импорт, оставляем один более полный
 from telegram.ext import Application, PicklePersistence
@@ -27,6 +43,7 @@ from handlers.start_command import start_handler
 from handlers.echo import echo_handler
 from handlers.reset_command import reset_handler, confirm_age_handler
 from handlers.media_handler import media_handler
+from handlers.support_command import support_handler
 
 class HttpxLogFilter(logging.Filter):
     """
@@ -56,7 +73,8 @@ async def post_init(application: Application) -> None:
     """
     commands = [
         BotCommand("start", "Перезапустить бота"),
-        BotCommand("reset", "Очистить историю диалога")
+        BotCommand("reset", "Очистить историю диалога"),
+        BotCommand("support", "Поддержать Ворона")
     ]
     await application.bot.set_my_commands(commands)
     logging.getLogger(__name__).info("Команды в меню успешно установлены.")
@@ -83,6 +101,7 @@ def main() -> None:
     application.add_handler(reset_handler)
     application.add_handler(confirm_age_handler)
     application.add_handler(media_handler)
+    application.add_handler(support_handler)
 
     # Запускаем бота (он будет работать, пока вы не остановите процесс, например, нажав Ctrl+C)
     application.run_polling()
