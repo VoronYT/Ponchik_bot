@@ -136,11 +136,28 @@ client = AsyncOpenAI(
 # Список моделей для переключения в случае достижения лимитов.
 # Бот будет пробовать их по порядку.
 MODELS_TO_TRY = [
-    "llama-3.1-8b-instant", # Быстрая и эффективная модель
-    "llama3-70b-8192",      # Более мощная модель, если первая не справится
-    "llama3-8b-8192",       # Еще один хороший вариант
-    "mixtral-8x7b-32768"    # Модель с большим контекстным окном
+    "groq/compound",
+    "groq/compound-mini",
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+    "meta-llama/llama-guard-4-12b",
+    "meta-llama/llama-prompt-guard-2-22m",
+    "meta-llama/llama-prompt-guard-2-86m",
+    "llama-3.3-70b-versatile",
+    "moonshotai/kimi-k2-instruct",
+    "moonshotai/kimi-k2-instruct-0905",
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "openai/gpt-oss-safeguard-20b",
+    "allam-2-7b",
+    "llama-3.1-8b-instant",
+    "meta-llama/llama-4-maverick-17b-128e-instruct",
+    "qwen/qwen3-32b"
 ]
+
+# Рекомендованные:
+    # "llama-3.1-8b-instant",
+    # "llama-3.3-70b-versatile",
+    # "qwen/qwen3-32b"
 
 #Список всех моделей groq
     # "groq/compound",
