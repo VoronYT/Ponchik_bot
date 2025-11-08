@@ -8,7 +8,7 @@ from services.ai_service import get_ai_response
 
 logger = logging.getLogger(__name__)
 
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def echo_logic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Отвечает на текстовое сообщение с помощью ИИ."""
     user = update.effective_user
     message_text = update.message.text
@@ -37,10 +37,10 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     # Получаем ответ от ИИ и отправляем его пользователю
     # Передаем в API только ограниченную историю
-    ai_response = await get_ai_response(messages_to_send, user.full_name)
+    ai_response, used_model = await get_ai_response(messages_to_send, user.full_name)
 
     # Логируем ответ бота
-    logger.info(f"[РУ]Бот ответил {user.full_name} ({user.id}): '{ai_response}'")
+    logger.info(f"[РУ]Бот ответил {user.full_name} ({user.id}) (модель: {used_model}): '{ai_response}'")
 
     # Добавляем ответ ИИ в историю
     chat_history.append({"role": "assistant", "content": ai_response})
@@ -50,8 +50,12 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await update.message.reply_text(ai_response)
 
+async def echo_handler_func(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Функция-обертка для регистрации в MessageHandler, предотвращает двойные вызовы."""
+    await echo_logic(update, context)
+
 # Создаем фильтр для текстовых сообщений, которые не являются командами, в личных чатах.
 echo_filter = filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE
 
 # Создаем сам обработчик, который мы будем импортировать в главном файле.
-echo_handler = MessageHandler(echo_filter, echo)
+echo_handler = MessageHandler(echo_filter, echo_handler_func)

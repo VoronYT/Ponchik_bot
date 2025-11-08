@@ -130,7 +130,9 @@ def retrieve_relevant_lore(user_query: str) -> tuple[str, int]:
 
 client = AsyncOpenAI(
     api_key=GROQ_API_KEY,
-    base_url="https://api.groq.com/openai/v1"
+    base_url="https://api.groq.com/openai/v1",
+    max_retries=0,  # Отключаем автоматические повторные попытки при ошибке 429
+    timeout=20.0,   # Устанавливаем общий таймаут на ответ в 20 секунд
 )
 
 # Список моделей для переключения в случае достижения лимитов.
@@ -138,7 +140,6 @@ client = AsyncOpenAI(
 MODELS_TO_TRY = [
     "groq/compound",
     "groq/compound-mini",
-    "meta-llama/llama-4-scout-17b-16e-instruct",
     "llama-3.3-70b-versatile",
     "moonshotai/kimi-k2-instruct",
     "moonshotai/kimi-k2-instruct-0905",
@@ -159,21 +160,17 @@ MODELS_TO_TRY = [
     # "groq/compound",
     # "groq/compound-mini",
     # "meta-llama/llama-4-scout-17b-16e-instruct",
-    # "meta-llama/llama-guard-4-12b",
-    # "meta-llama/llama-prompt-guard-2-22m",
-    # "meta-llama/llama-prompt-guard-2-86m",
     # "llama-3.3-70b-versatile",
     # "moonshotai/kimi-k2-instruct",
     # "moonshotai/kimi-k2-instruct-0905",
     # "openai/gpt-oss-120b",
     # "openai/gpt-oss-20b",
-    # "openai/gpt-oss-safeguard-20b",
     # "allam-2-7b",
     # "llama-3.1-8b-instant",
     # "meta-llama/llama-4-maverick-17b-128e-instruct",
     # "qwen/qwen3-32b"
 
-async def get_ai_response(message_history: list, username: str) -> str:
+async def get_ai_response(message_history: list, username: str) -> tuple[str, str]:
     """
     Отправляет историю сообщений в Groq. При достижении лимита одной модели,
     автоматически переключается на следующую из списка.
@@ -203,7 +200,7 @@ async def get_ai_response(message_history: list, username: str) -> str:
             # Логируем использование токенов в консоль и в БД
             logger.info(f"Token Usage: {username} - {response.usage.total_tokens} (Total)")
             log_usage_to_db(username, user_query, response.usage, ai_message, lore_chunks_count)
-            return ai_message
+            return ai_message, model
         except RateLimitError:
             logger.warning(f"Достигнут лимит для модели ({model}). Переключаюсь на следующую.")
             continue  # Переходим к следующей модели в цикле
@@ -220,7 +217,7 @@ async def get_ai_response(message_history: list, username: str) -> str:
     logger.error("Все доступные модели исчерпали свои лимиты.")
     return "Мля, я заманался с тобой болтать. Приходи в другой раз."
 
-async def get_ai_response_without_lore(message_history: list, model: str, username: str) -> str:
+async def get_ai_response_without_lore(message_history: list, model: str, username: str) -> tuple[str, str]:
     """
     Запасной метод для отправки запроса без RAG-контекста, если первоначальный запрос был слишком большим.
     """
@@ -239,7 +236,7 @@ async def get_ai_response_without_lore(message_history: list, model: str, userna
         # Логируем использование токенов в консоль и в БД
         logger.info(f"Token Usage (without lore): {username} - {response.usage.total_tokens} (Total)")
         log_usage_to_db(username, message_history[-1]['content'], response.usage, ai_message, lore_chunks_count=0)
-        return ai_message
+        return ai_message, model
     except Exception as e:
         logger.error(f"Критическая ошибка при обращении к Groq API с моделью {model}: {e}")
         return "Хм, чёт у меня какие-то неполадки... Напиши потом."

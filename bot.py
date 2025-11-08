@@ -48,18 +48,25 @@ from handlers.support_command import support_handler
 class HttpxLogFilter(logging.Filter):
     """
     Фильтр для сокращения логов от библиотеки httpx.
-    Преобразует 'HTTP Request: POST ... "HTTP/1.1 200 OK"' в 'Request 200 OK'.
+    - Преобразует '... 200 OK' в 'Request 200 OK'.
+    - Полностью скрывает ошибки '429 Too Many Requests', т.к. у нас есть свой лог.
     """
     _pattern = re.compile(r'HTTP Request: \w+ .* "HTTP/\d\.\d (\d{3} [A-Z ]+)"')
 
     def filter(self, record: logging.LogRecord) -> bool:
         # Применяем фильтр только к INFO-логам от httpx
         if record.name == 'httpx' and record.levelno == logging.INFO:
-            match = self._pattern.match(record.getMessage())
+            message = record.getMessage()
+            # Сначала проверяем на ошибку 429
+            if "429 Too Many Requests" in message:
+                return False # Не пропускаем эту запись в лог
+
+            match = self._pattern.match(message)
             if match:
                 # Извлекаем статус (например, "200 OK") и заменяем сообщение
                 record.msg = f"Request {match.group(1)}"
                 record.args = () # Очищаем аргументы, чтобы избежать ошибок форматирования
+
         return True # Пропускаем все записи дальше
 
 # Создаем и применяем наш кастомный фильтр к логгеру httpx
