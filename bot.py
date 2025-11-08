@@ -4,15 +4,13 @@ import re
 
 import os
 # --- НАСТРОЙКА ЛОГИРОВАНИЯ ---
-# Получаем корневой логгер
-root_logger = logging.getLogger()
-root_logger.setLevel(logging.INFO)
-# Создаем обработчик, который будет выводить логи в консоль (stdout)
-handler = logging.StreamHandler(sys.stdout)
-# Устанавливаем формат сообщений
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-handler.setFormatter(formatter)
-root_logger.addHandler(handler)
+# Переносим настройку в самое начало, чтобы она применялась ко всем импортируемым модулям.
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+    stream=sys.stdout,
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 # Удаляем дублирующийся импорт, оставляем один более полный
 from telegram.ext import Application, PicklePersistence
