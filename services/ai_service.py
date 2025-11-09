@@ -220,6 +220,7 @@ async def get_ai_response(message_history: list, username: str) -> tuple[str, st
                 model=model,
                 messages=messages_with_prompt,
                 temperature=0.5,
+                max_tokens=150,  # Ограничиваем длину ответа ~100-200 словами
             )
             raw_message = response.choices[0].message.content
             ai_message = _strip_think_tags(raw_message)
@@ -257,6 +258,7 @@ async def get_ai_response_without_lore(message_history: list, model: str, userna
             model=model,
             messages=messages_with_prompt,
             temperature=0.5,
+            max_tokens=150,  # Ограничиваем длину ответа ~100-200 словами
         )
         raw_message = response.choices[0].message.content
         ai_message = _strip_think_tags(raw_message)
