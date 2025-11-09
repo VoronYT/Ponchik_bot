@@ -52,6 +52,13 @@ try:
     SUPPORT_LINK = get_env_var("SUPPORT_LINK")
     # Загружаем ID администратора. Он должен быть числом.
     ADMIN_ID = get_env_var("ADMIN_ID", is_int=True)
+    
+    # Список заблокированных пользователей (ID)
+    BLACKLIST = [
+        # 123456789,  # @username - причина блокировки
+        1754638261 #тестовый
+    ]
+    
     # Загружаем системный промпт из файла, а не из .env
     SYSTEM_PROMPT = load_prompt_from_file("system_prompt.txt")
 except (ValueError, FileNotFoundError):

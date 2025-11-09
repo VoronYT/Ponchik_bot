@@ -5,6 +5,7 @@ from telegram.constants import ChatAction
 
 # Импортируем наш сервис для работы с ИИ
 from services.ai_service import get_ai_response
+from handlers.utils import check_blacklist
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ def is_spam(text: str) -> bool:
     # Если в длинном сообщении очень мало букв/цифр или очень мало уникальных символов, считаем это спамом.
     return (alnum_count / length < 0.3) or (unique_chars < 10 and length > 200)
 
+@check_blacklist
 async def echo_logic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Отвечает на текстовое сообщение с помощью ИИ."""
     user = update.effective_user
