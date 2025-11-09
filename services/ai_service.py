@@ -216,14 +216,51 @@ async def get_ai_response(message_history: list, username: str) -> tuple[str, st
     for model in MODELS_TO_TRY:
         try:
             logger.info(f"Отправка запроса в Groq (модель: {model}) с последним сообщением: '{user_query}'")
+            # Добавляем stop-последовательности, чтобы попытаться предотвратить
+            # генерацию служебных тегов вроде <think>...</think> и ограничиваем длину.
             response = await client.chat.completions.create(
                 model=model,
                 messages=messages_with_prompt,
                 temperature=0.5,
                 max_tokens=150,  # Ограничиваем длину ответа ~100-200 словами
+                stop=["<think>", "</think>"],
             )
             raw_message = response.choices[0].message.content
             ai_message = _strip_think_tags(raw_message)
+
+            # Если модель всё же вернула теги <think>...</think>, делаем одну повторную попытку
+            # с более строгой системной инструкцией (и тем же стопом). Это уменьшит шанс
+            # генерации внутренних размышлений.
+            raw_low = raw_message.lower() if isinstance(raw_message, str) else ''
+            if '<think>' in raw_low or '</think>' in raw_low:
+                logger.warning(f"Модель {model} вернула теги <think> — делаю одну повторную попытку без них для {username}.")
+                strict_system = dynamic_system_prompt + "\n\nВажное правило: НИКОГДА не выводи внутренние размышления, метатеги или теги вида <think>...</think>. Отвечай 1-3 предложениями, прямо и без мета-комментариев."
+                retry_messages = [{"role": "system", "content": strict_system}] + message_history
+                try:
+                    retry_resp = await client.chat.completions.create(
+                        model=model,
+                        messages=retry_messages,
+                        temperature=0.5,
+                        max_tokens=150,
+                        stop=["<think>", "</think>"],
+                    )
+                    raw_retry = retry_resp.choices[0].message.content
+                    ai_message = _strip_think_tags(raw_retry)
+                    # если повторный ответ тоже содержит теги, зафиксируем это и все равно уберём теги
+                    if '<think>' in (raw_retry.lower() if isinstance(raw_retry, str) else ''):
+                        logger.warning(f"Повторная попытка для {username} всё ещё вернула <think>-теги; теги будут удалены.")
+                        ai_message = _strip_think_tags(raw_retry) + "\n\n(Внутренние размышления были удалены из ответа.)"
+                        # логируем использование токенов и результаты повторной попытки
+                        logger.info(f"Token Usage (retry): {username} - {getattr(retry_resp.usage, 'total_tokens', 'n/a')} (Total)")
+                        log_usage_to_db(username, user_query, getattr(retry_resp, 'usage', None), ai_message, lore_chunks_count, model)
+                    else:
+                        # логируем токены от успешной повторной попытки
+                        logger.info(f"Token Usage (retry): {username} - {getattr(retry_resp.usage, 'total_tokens', 'n/a')} (Total)")
+                        log_usage_to_db(username, user_query, getattr(retry_resp, 'usage', None), ai_message, lore_chunks_count, model)
+                except Exception as e2:
+                    logger.error(f"Ошибка при повторной попытке удаления <think>-тегов для модели {model}: {e2}")
+                    # В случае падения при повторной попытке оставляем уже очищенный первичный ответ
+                    ai_message = _strip_think_tags(raw_message) + "\n\n(Первичный ответ содержал внутренние размышления, они удалены.)"
             # Логируем использование токенов в консоль и в БД
             logger.info(f"Token Usage: {username} - {response.usage.total_tokens} (Total)")
             log_usage_to_db(username, user_query, response.usage, ai_message, lore_chunks_count, model)
