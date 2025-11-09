@@ -1,5 +1,6 @@
 import logging
 from openai import AsyncOpenAI, RateLimitError
+import re
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -170,6 +171,13 @@ MODELS_TO_TRY = [
     # "meta-llama/llama-4-maverick-17b-128e-instruct",
     # "qwen/qwen3-32b"
 
+def _strip_think_tags(text: str) -> str:
+    """Удаляет из ответа модели блоки <think>...</think>."""
+    # re.DOTALL позволяет точке (.) соответствовать также и символам новой строки,
+    # что важно для многострочных блоков <think>.
+    cleaned_text = re.sub(r"<think>.*?</think>\s*", "", text, flags=re.DOTALL)
+    return cleaned_text.strip()
+
 async def get_ai_response(message_history: list, username: str) -> tuple[str, str]:
     """
     Отправляет историю сообщений в Groq. При достижении лимита одной модели,
@@ -196,7 +204,8 @@ async def get_ai_response(message_history: list, username: str) -> tuple[str, st
                 messages=messages_with_prompt,
                 temperature=0.5,
             )
-            ai_message = response.choices[0].message.content.strip()
+            raw_message = response.choices[0].message.content
+            ai_message = _strip_think_tags(raw_message)
             # Логируем использование токенов в консоль и в БД
             logger.info(f"Token Usage: {username} - {response.usage.total_tokens} (Total)")
             log_usage_to_db(username, user_query, response.usage, ai_message, lore_chunks_count)
@@ -232,7 +241,8 @@ async def get_ai_response_without_lore(message_history: list, model: str, userna
             messages=messages_with_prompt,
             temperature=0.5,
         )
-        ai_message = response.choices[0].message.content.strip()
+        raw_message = response.choices[0].message.content
+        ai_message = _strip_think_tags(raw_message)
         # Логируем использование токенов в консоль и в БД
         logger.info(f"Token Usage (without lore): {username} - {response.usage.total_tokens} (Total)")
         log_usage_to_db(username, message_history[-1]['content'], response.usage, ai_message, lore_chunks_count=0)
