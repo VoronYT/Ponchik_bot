@@ -186,10 +186,15 @@ try:
         content = characters_file_path.read_text(encoding='utf-8')
         for line in content.splitlines():
             if ':' in line:
-                character_name = line.split(':', 1)[0].strip().lower()
-                if character_name and not character_name.startswith('#'):
-                    IMPORTANT_KEYWORDS_RAW.add(character_name)
-                    EXACT_IMPORTANT_KEYWORDS.add(character_name)
+                # Часть до двоеточия может содержать несколько прозвищ/алиасов.
+                # Поддерживаем разделители: запятая, слэш, точка с запятой, пайп, скобки.
+                names_part = line.split(':', 1)[0].strip()
+                # Разбиваем по разделителям и добавляем каждое имя отдельно
+                for raw_name in re.split(r"[,/;|()]", names_part):
+                    character_name = raw_name.strip().lower()
+                    if character_name and not character_name.startswith('#'):
+                        IMPORTANT_KEYWORDS_RAW.add(character_name)
+                        EXACT_IMPORTANT_KEYWORDS.add(character_name)
         logger.info(f"Загружено {len(EXACT_IMPORTANT_KEYWORDS)} имён персонажей (точный набор)")
 except Exception as e:
     logger.debug(f"Не удалось загрузить персонажей для точного сопоставления: {e}")
@@ -343,6 +348,31 @@ def retrieve_relevant_lore(user_query: str) -> tuple[str, int]:
 
     exact_token_matches = {t for t in query_tokens if t in EXACT_IMPORTANT_KEYWORDS}
     exact_lemma_matches = {l for l in query_lemmas if l in EXACT_IMPORTANT_LEMMAS}
+
+    # Дополнительный механизм: попытка сопоставить точные имена по стемам/основам.
+    # Это помогает ловить имена в разных падежах без наличия pymorphy2
+    exact_stem_matches = set()
+    try:
+        if STEMMER:
+            for exact in EXACT_IMPORTANT_KEYWORDS:
+                try:
+                    if STEMMER.stem(exact) in query_stems:
+                        exact_stem_matches.add(exact)
+                except Exception:
+                    # На случай неожиданных символов в имени
+                    if exact in query_tokens or exact in query_lemmas:
+                        exact_stem_matches.add(exact)
+        else:
+            # Если стеммера нет, используем простую проверку вхождения
+            for exact in EXACT_IMPORTANT_KEYWORDS:
+                if exact in query_lower or exact in query_tokens:
+                    exact_stem_matches.add(exact)
+    except Exception:
+        exact_stem_matches = set()
+
+    if exact_stem_matches:
+        logger.info(f"Найдены точные имена по стемам: {exact_stem_matches}")
+        exact_token_matches.update(exact_stem_matches)
     if exact_token_matches or exact_lemma_matches:
         logger.info(f"Найдены точные совпадения важных терминов в запросе (tokens/lemmas): {exact_token_matches}/{exact_lemma_matches}")
 

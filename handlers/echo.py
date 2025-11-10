@@ -44,7 +44,7 @@ async def echo_logic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     # Проверяем, не находится ли бот в режиме обновления
     if BOT_MAINTENANCE:
-        await update.message.reply_text("Бот на обновлении. Напиши попозже!")
+        await update.message.reply_text("[РУ]Бот на обновлении. Напиши попозже!")
         return
 
     # Проверяем, подтвержден ли возраст, перед тем как отвечать
