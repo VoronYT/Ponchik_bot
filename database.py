@@ -122,3 +122,32 @@ def get_top_users_for_date(date_str: str, limit: int = 20) -> list[dict]:
     except sqlite3.Error as e:
         logger.error(f"Ошибка при получении топа пользователей из БД: {e}")
         return []
+
+def get_overall_user_stats_for_date(date_str: str) -> dict:
+    """
+    Собирает общую статистику по пользователям за указанную дату.
+    Возвращает словарь с общим числом запросов, токенов и количеством уникальных пользователей.
+    """
+    try:
+        with sqlite3.connect(DB_NAME) as conn:
+            cursor = conn.cursor()
+            # Считаем общее количество запросов и токенов
+            cursor.execute("""
+                SELECT COUNT(*), SUM(total_tokens)
+                FROM usage
+                WHERE date(timestamp) = ?
+            """, (date_str,))
+            total_requests, total_tokens = cursor.fetchone()
+
+            # Считаем количество уникальных пользователей
+            cursor.execute("""
+                SELECT COUNT(DISTINCT username)
+                FROM usage
+                WHERE date(timestamp) = ?
+            """, (date_str,))
+            unique_users_count = cursor.fetchone()[0]
+
+            return {"total_requests": total_requests or 0, "total_tokens": total_tokens or 0, "unique_users_count": unique_users_count or 0}
+    except sqlite3.Error as e:
+        logger.error(f"Ошибка при получении общей статистики пользователей из БД: {e}")
+        return {"total_requests": 0, "total_tokens": 0, "unique_users_count": 0}

@@ -3,7 +3,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler, filters
 from datetime import date, timedelta
 
-from database import get_top_users_for_date
+from database import get_top_users_for_date, get_overall_user_stats_for_date
 from config import ADMIN_ID
 
 logger = logging.getLogger(__name__)
@@ -47,15 +47,27 @@ async def topusers_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     logger.info(f"Администратор запросил топ пользователей за {date_str}.")
 
+    # Получаем данные для топа и для общей статистики
     top_users = get_top_users_for_date(date_str, limit=20)
+    overall_stats = get_overall_user_stats_for_date(date_str)
 
     if not top_users:
         await query.edit_message_text(f"За {date_str} нет данных по пользователям.")
         return
 
+    # Рассчитываем средние значения
+    unique_users_count = overall_stats.get("unique_users_count", 0)
+    avg_requests = (overall_stats.get("total_requests", 0) / unique_users_count) if unique_users_count > 0 else 0
+    avg_tokens = (overall_stats.get("total_tokens", 0) / unique_users_count) if unique_users_count > 0 else 0
+
     # Формируем сообщение
     header_lines = [
         f"🏆 Топ пользователей за {date_str}",
+        "", # Пустая строка для отступа
+        f"👥 Всего уникальных пользователей: {unique_users_count}",
+        f"📈 Среднее кол-во запросов на пользователя: {avg_requests:.1f}",
+        f"🪙 Среднее кол-во токенов на пользователя: {avg_tokens:,.0f}".replace(',', ' '),
+        "", # Пустая строка для отступа
         f"(по количеству запросов, топ {len(top_users)})",
         "---"
     ]
