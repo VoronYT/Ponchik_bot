@@ -2,6 +2,8 @@
 .env
 
 Задачи.txt
+input.txt
+sorted_dialogs.txt
 
 # Папки с кэшем Python
 __pycache__/
