@@ -17,9 +17,8 @@ def sort_log_file(input_filename: str, output_filename: str):
     # Словарь для хранения вопросов, на которые еще не было ответа.
     # Используем defaultdict(list), чтобы хранить несколько вопросов от одного юзера.
     pending_questions = defaultdict(list)
-    # Словарь для хранения всех диалогов, сгруппированных по пользователю.
-    completed_dialogs = defaultdict(list)
-    unanswered_dialogs = defaultdict(list)
+    # Словарь для хранения всех диалогов, сгруппированных по пользователю (все типы вместе).
+    all_dialogs = defaultdict(list)
 
     print(f"Читаю файл '{input_filename}'...")
 
@@ -69,14 +68,14 @@ def sort_log_file(input_filename: str, output_filename: str):
                         # Мы нашли подходящий вопрос. Извлекаем его.
                         question_timestamp, question_text = pending_questions[username].pop(best_match_index)
                         if is_error_response:
-                            # Помещаем в блок неотвеченных, но сохраним текст ответа как пометку об ошибке
+                            # Помещаем в общий список с пометкой об ошибке
                             dialog_entry = (
                                 f"({question_timestamp})\n"
                                 f"👤 Пользователь: {username}\n"
                                 f"❓ Вопрос: {question_text}\n"
                                 f"🤖 Ответ: [ОШИБКА] {answer_text}\n\n"
                             )
-                            unanswered_dialogs[username].append((question_timestamp, dialog_entry))
+                            all_dialogs[username].append((question_timestamp, dialog_entry))
                         else:
                             dialog_entry = (
                                 f"({question_timestamp})\n"
@@ -84,7 +83,7 @@ def sort_log_file(input_filename: str, output_filename: str):
                                 f"❓ Вопрос: {question_text}\n"
                                 f"🤖 Ответ (модель: {model_used}): {answer_text}\n\n"
                             )
-                            completed_dialogs[username].append((question_timestamp, dialog_entry))
+                            all_dialogs[username].append((question_timestamp, dialog_entry))
 
         # --- НОВЫЙ ШАГ: Обработка оставшихся вопросов без ответов ---
         # После обработки всего файла, проверяем, остались ли неотвеченные вопросы.
@@ -97,34 +96,25 @@ def sort_log_file(input_filename: str, output_filename: str):
                         f"❓ Вопрос: {question_text}\n"
                         f"🤖 Ответ: [НЕТ ОТВЕТА]\n\n"
                     )
-                    # Для вопросов без ответа ставим текущее время, чтобы они оказались в конце.
-                    unanswered_dialogs[username].append((question_timestamp, dialog_entry))
+                    # Добавляем в основной список вместе с остальными диалогами
+                    all_dialogs[username].append((question_timestamp, dialog_entry))
 
         # --- ФИНАЛЬНЫЙ ШАГ: Сборка и запись результата ---
+        # Группируем все диалоги по пользователям и сортируем
         final_output = []
         total_dialogs = 0
 
-        # Сначала обрабатываем завершенные диалоги
-        completed_users = sorted(completed_dialogs.keys())
-        for i, username in enumerate(completed_users):
+        sorted_usernames = sorted(all_dialogs.keys())
+        for i, username in enumerate(sorted_usernames):
+            # Добавляем заголовок с именем пользователя
+            final_output.append(f"\n{'*'*50}\n")
+            final_output.append(f"👤 ПОЛЬЗОВАТЕЛЬ: {username}\n")
+            final_output.append(f"{'*'*50}\n\n")
+            
             # Сортируем диалоги пользователя по времени
-            dialogs = sorted(completed_dialogs[username], key=lambda x: x[0])
+            dialogs = sorted(all_dialogs[username], key=lambda x: x[0])
             final_output.extend([dialog[1] for dialog in dialogs])
             total_dialogs += len(dialogs)
-            if i < len(completed_users) - 1:
-                final_output.append(f"{'='*40}\n\n")
-
-        # Добавляем разделитель перед блоком неотвеченных вопросов, если они есть
-        if unanswered_dialogs:
-            if completed_dialogs: # Добавляем разделитель, только если были и завершенные диалоги
-                final_output.append(f"\n{'#'*15} ВОПРОСЫ БЕЗ ОТВЕТА {'#'*15}\n\n")
-            unanswered_users = sorted(unanswered_dialogs.keys())
-            for i, username in enumerate(unanswered_users):
-                dialogs = sorted(unanswered_dialogs[username], key=lambda x: x[0])
-                final_output.extend([dialog[1] for dialog in dialogs])
-                total_dialogs += len(dialogs)
-                if i < len(unanswered_users) - 1:
-                    final_output.append(f"{'='*40}\n\n")
 
         print(f"Обработка завершена. Найдено {total_dialogs} диалогов.")
 

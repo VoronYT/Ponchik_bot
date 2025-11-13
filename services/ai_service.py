@@ -485,12 +485,21 @@ MODEL_TOKEN_LIMITS = {
     "qwen/qwen3-32b": 500_000
 }
 
-def _strip_think_tags(text: str) -> str:
-    """Полностью удаляет блоки <think>...</think> из текста и очищает пробелы по краям."""
-    # Используем re.sub для замены всего, что находится между <think> и </think> (включая сами теги) на пустую строку.
-    # re.DOTALL позволяет точке (.) соответствовать также и символу переноса строки
-    processed_text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    return processed_text.strip()
+def _strip_think_tags(text: str, model_name: str) -> str:
+    """
+    Обрабатывает теги <think> в ответе ИИ.
+    - Для 'qwen/qwen3-32b': полностью удаляет блоки <think>...</think>.
+    - Для других моделей: если найден тег <think>, возвращает сообщение об ошибке.
+    """
+    if "<think>" in text:
+        if model_name == "qwen/qwen3-32b":
+            # Для qwen просто удаляем блок
+            processed_text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+            return processed_text.strip()
+        else:
+            # Для остальных моделей возвращаем ошибку
+            return "Ошибка. Ответ слишком большой."
+    return text.strip()
 
 async def get_ai_response(message_history: list, username: str) -> dict:
     """
@@ -524,7 +533,7 @@ async def get_ai_response(message_history: list, username: str) -> dict:
                 max_tokens=max_tokens_for_model,
             )
             raw_message = response.choices[0].message.content
-            ai_message = _strip_think_tags(raw_message)
+            ai_message = _strip_think_tags(raw_message, model)
             # Temporary log: raw AI message before processing
             logger.info(f"Raw AI Message: {raw_message}")
 
@@ -574,7 +583,7 @@ async def get_ai_response_without_lore(message_history: list, model: str, userna
             max_tokens=max_tokens_for_model,
         )
         raw_message = response.choices[0].message.content
-        ai_message = _strip_think_tags(raw_message)
+        ai_message = _strip_think_tags(raw_message, model)
         logger.info(f"Token Usage (without lore): {username} - {response.usage.total_tokens} (Total)")
         log_usage_to_db(username, message_history[-1]['content'], response.usage, ai_message, lore_chunks_count=0, model_name=model)
         return {
