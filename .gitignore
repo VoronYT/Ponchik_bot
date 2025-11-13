@@ -2,8 +2,7 @@
 .env
 
 Tasks.txt
-input.txt
-sorted_dialogs.txt
+1message_sorter/*.txt
 
 # Папки с кэшем Python
 __pycache__/

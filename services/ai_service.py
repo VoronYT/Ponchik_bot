@@ -482,14 +482,15 @@ MODEL_TOKEN_LIMITS = {
     "openai/gpt-oss-20b": 200_000,
     "llama-3.1-8b-instant": 500_000,
     "meta-llama/llama-4-maverick-17b-128e-instruct": 500_000,
-    "qwen/qwen3-32b": 500_000,
+    "qwen/qwen3-32b": 500_000
 }
 
 def _strip_think_tags(text: str) -> str:
-    """Если видит тег <think>, заменяет весь последующий текст на сообщение об ошибке."""
-    if "<think>" in text:
-        return "Ошибка. Ответ слишком большой"
-    return text.strip()
+    """Полностью удаляет блоки <think>...</think> из текста и очищает пробелы по краям."""
+    # Используем re.sub для замены всего, что находится между <think> и </think> (включая сами теги) на пустую строку.
+    # re.DOTALL позволяет точке (.) соответствовать также и символу переноса строки
+    processed_text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    return processed_text.strip()
 
 async def get_ai_response(message_history: list, username: str) -> dict:
     """
@@ -512,14 +513,21 @@ async def get_ai_response(message_history: list, username: str) -> dict:
     for model in MODELS_TO_TRY:
         try:
             logger.info(f"Отправка запроса в Groq (модель: {model}) с последним сообщением: '{user_query}'")
+            
+            # Устанавливаем лимит токенов для всех моделей, кроме qwen/qwen3-32b
+            max_tokens_for_model = None if model == "qwen/qwen3-32b" else 150
+
             response = await client.chat.completions.create(
                 model=model,
                 messages=messages_with_prompt,
                 temperature=0.5,
-                max_tokens=150,  # Ограничиваем длину ответа ~100-200 словами
+                max_tokens=max_tokens_for_model,
             )
             raw_message = response.choices[0].message.content
             ai_message = _strip_think_tags(raw_message)
+            # Temporary log: raw AI message before processing
+            logger.info(f"Raw AI Message: {raw_message}")
+
             # Логируем использование токенов в консоль и в БД
             logger.info(f"Token Usage: {username} - {response.usage.total_tokens} (Total)")
             log_usage_to_db(username, user_query, response.usage, ai_message, lore_chunks_count, model)
@@ -555,11 +563,15 @@ async def get_ai_response_without_lore(message_history: list, model: str, userna
         logger.info(f"Повторная отправка запроса в Groq (модель: {model}) без лора.")
         base_prompt = SYSTEM_PROMPT
         messages_with_prompt = [{"role": "system", "content": base_prompt}] + message_history
+
+        # Устанавливаем лимит токенов для всех моделей, кроме qwen/qwen3-32b
+        max_tokens_for_model = None if model == "qwen/qwen3-32b" else 150
+
         response = await client.chat.completions.create(
             model=model,
             messages=messages_with_prompt,
             temperature=0.5,
-            max_tokens=150,
+            max_tokens=max_tokens_for_model,
         )
         raw_message = response.choices[0].message.content
         ai_message = _strip_think_tags(raw_message)
