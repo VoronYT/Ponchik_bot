@@ -8,7 +8,7 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-def get_env_var(var_name: str, is_int: bool = False, is_list_of_int: bool = False, is_bool: bool = False, default=None):
+def get_env_var(var_name: str, is_int: bool = False, is_list_of_int: bool = False, is_bool: bool = False, is_list_of_str: bool = False, separator: str = ',', default=None):
     """
     Безопасно загружает переменную окружения и проверяет ее наличие.
     Если указан `default`, переменная становится необязательной.
@@ -36,6 +36,9 @@ def get_env_var(var_name: str, is_int: bool = False, is_list_of_int: bool = Fals
         except ValueError:
             logger.critical(f"ОШИБКА: Переменная {var_name} ('{value}') должна быть списком чисел, разделенных запятой.")
             raise ValueError(f"Переменная {var_name} должна быть списком чисел")
+
+    if is_list_of_str:
+        return [item.strip() for item in value.split(separator)]
 
     return value
 
@@ -72,3 +75,6 @@ except (ValueError, FileNotFoundError):
     # Если при загрузке произошла любая ошибка, которую мы отловили выше,
     # программа выведет сообщение в лог и завершится.
     exit()
+
+# Список ID чатов, где боту разрешено работать (реагировать на баны).
+ALLOWED_GROUP_IDS = get_env_var("ALLOWED_GROUP_IDS", is_list_of_int=True, default=[])

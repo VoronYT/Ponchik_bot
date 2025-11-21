@@ -30,6 +30,7 @@ for logger_name in ["handlers.echo", "handlers.support_command", "httpx", "servi
 
 # Удаляем дублирующийся импорт, оставляем один более полный
 from telegram.ext import Application, PicklePersistence
+from telegram import Update
 from telegram import BotCommand
 
 # Импортируем новую функцию для инициализации БД
@@ -48,6 +49,7 @@ from handlers.stats_command import stats_handler, stats_callback_handler
 from handlers.topusers_command import topusers_handler, topusers_callback_handler
 from handlers.helpadm_command import helpadm_handler
 from handlers.getdb_command import getdb_handler
+from handlers.member_updates import member_update_handler
 
 class HttpxLogFilter(logging.Filter):
     """
@@ -108,11 +110,17 @@ def main() -> None:
     # Создаем объект для сохранения данных. Файл будет создан в той же папке.
     persistence = PicklePersistence(filepath=os.path.join(DATA_DIR, "ponchik_bot_persistence"))
     # Создаем приложение, передаем ему токен бота и объект для сохранения данных.
-    application = Application.builder().token(BOT_TOKEN).persistence(persistence).post_init(post_init).build()
+    application = (
+        Application.builder()
+        .token(BOT_TOKEN)
+        .persistence(persistence)
+        .post_init(post_init)
+        .build()
+    )
 
     # --- РЕГИСТРАЦИЯ ОБРАБОТЧИКОВ ---
     # Важен порядок: сначала специфичные (команды, диалоги), затем более общие (текст, медиа).
-    
+
     application.add_handler(start_handler)
     application.add_handler(reset_handler)
     application.add_handler(support_handler)
@@ -123,11 +131,12 @@ def main() -> None:
     application.add_handler(topusers_callback_handler)
     application.add_handler(helpadm_handler) # Команда помощи для админа
     application.add_handler(getdb_handler) # Команда для получения БД
+    application.add_handler(member_update_handler) # Обработчик входа/выхода/бана
     application.add_handler(media_handler)
     application.add_handler(echo_handler) # Общий обработчик текста ставим в конце
 
     # Запускаем бота (он будет работать, пока вы не остановите процесс, например, нажав Ctrl+C)
-    application.run_polling()
+    application.run_polling(allowed_updates=[Update.MESSAGE, Update.CALLBACK_QUERY, Update.CHAT_MEMBER])
 
 if __name__ == "__main__":
     main()
