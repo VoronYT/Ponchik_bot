@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 # На Railway этот путь будет указывать на подключенный том (Volume).
 # Для локальной разработки создаем папку 'data' в корне проекта.
 IS_RAILWAY = 'RAILWAY_STATIC_URL' in os.environ
-DATA_DIR = "/app/data" if IS_RAILWAY else os.path.join(os.path.dirname(__file__), '..', 'data')
+DATA_DIR = "/app/data" if IS_RAILWAY else os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data')
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # Основная БД приложения теперь ponchik_db (SQLite файл)

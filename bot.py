@@ -50,6 +50,7 @@ from handlers.topusers_command import topusers_handler, topusers_callback_handle
 from handlers.helpadm_command import helpadm_handler
 from handlers.getdb_command import getdb_handler
 from handlers.globalmessage_command import globalmessage_handler
+from handlers.importdb_command import importdb_handler # Временная команда
 from handlers.member_updates import member_update_handler
 
 class HttpxLogFilter(logging.Filter):
@@ -133,6 +134,7 @@ def main() -> None:
     application.add_handler(helpadm_handler) # Команда помощи для админа
     application.add_handler(getdb_handler) # Команда для получения БД
     application.add_handler(globalmessage_handler) # Команда для глобальной рассылки
+    application.add_handler(importdb_handler) # Временная команда для импорта
     application.add_handler(member_update_handler) # Обработчик входа/выхода/бана
     application.add_handler(media_handler)
     application.add_handler(echo_handler) # Общий обработчик текста ставим в конце
