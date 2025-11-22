@@ -3,9 +3,6 @@ import sys
 import re
 
 import os
-import threading
-import time
-import hashlib
 # --- НАСТРОЙКА ЛОГИРОВАНИЯ ---
 # Переносим настройку в самое начало, чтобы она применялась ко всем импортируемым модулям.
 logging.basicConfig(
@@ -38,7 +35,6 @@ from telegram import BotCommand
 
 # Импортируем новую функцию для инициализации БД
 from database import init_db
-from database import DB_NAME
 # Импортируем токен из централизованной конфигурации
 from config import BOT_TOKEN
 
@@ -105,41 +101,7 @@ def main() -> None:
     # Инициализируем базу данных для логов токенов
     init_db()
 
-    # Запускаем фоновый наблюдатель за файлом БД, чтобы отследить возможные изменения после старта
-    def _start_db_watcher(path: str, interval: int = 10, checks: int = 36) -> None:
-        """
-        Фоновой поток, который периодически логирует размер/mtime/sha256 файла БД.
-        interval: интервал в секундах между проверками.
-        checks: количество проверок (по умолчанию ~6 минут при interval=10).
-        """
-        logger = logging.getLogger("db_watcher")
-        def _compute_sha256(p: str) -> str | None:
-            try:
-                h = hashlib.sha256()
-                with open(p, 'rb') as f:
-                    for chunk in iter(lambda: f.read(8192), b''):
-                        h.update(chunk)
-                return h.hexdigest()
-            except Exception:
-                return None
-
-        prev = None
-        for i in range(checks):
-            try:
-                exists = os.path.exists(path)
-                size = os.path.getsize(path) if exists else 0
-                mtime = os.path.getmtime(path) if exists else 0
-                sha = _compute_sha256(path) if exists else None
-                state = (exists, size, mtime, sha)
-                if state != prev:
-                    logger.info(f"DB watcher: path={path}, exists={exists}, size={size}, mtime={mtime}, sha256={sha}")
-                    prev = state
-            except Exception as e:
-                logger.error(f"DB watcher error: {e}")
-            time.sleep(interval)
-
-    watcher_thread = threading.Thread(target=_start_db_watcher, args=(DB_NAME,), daemon=True)
-    watcher_thread.start()
+    # Временный диагностический код удалён (db_watcher).
 
     # Определяем путь к папке с данными
     # Railway имеет переменные окружения: PORT, RAILWAY_ENVIRONMENT, DATABASE_URL и т.д.
