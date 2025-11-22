@@ -3,7 +3,6 @@
 
 Tasks.txt
 1message_sorter/*.txt
-bot_backup.py
 
 # Папки с кэшем Python
 __pycache__/

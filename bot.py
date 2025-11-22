@@ -56,7 +56,7 @@ from handlers.getdb_command import getdb_handler
 from handlers.globalmessage_command import globalmessage_handler
 from handlers.member_updates import member_update_handler
 from handlers.importdb_command import importdb_handler
-#sample
+
 class HttpxLogFilter(logging.Filter):
     """
     Фильтр для сокращения логов от библиотеки httpx.
