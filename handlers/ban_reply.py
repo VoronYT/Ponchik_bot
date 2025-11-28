@@ -53,4 +53,4 @@ async def track_chats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 
 # Создаем обработчик, который будет срабатывать на любые изменения в составе чата
-member_update_handler = ChatMemberHandler(track_chats, ChatMemberHandler.ANY_CHAT_MEMBER)
+ban_reply = ChatMemberHandler(track_chats, ChatMemberHandler.ANY_CHAT_MEMBER)

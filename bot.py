@@ -50,7 +50,9 @@ from handlers.topusers_command import topusers_handler, topusers_callback_handle
 from handlers.helpadm_command import helpadm_handler
 from handlers.getdb_command import getdb_handler
 from handlers.globalmessage_command import globalmessage_handler
-from handlers.member_updates import member_update_handler
+from handlers.ban_reply import ban_reply
+from handlers.cdcheck_command import cdcheck_handler
+from handlers.group_handler import group_reply_handler
 
 class HttpxLogFilter(logging.Filter):
     """
@@ -137,7 +139,9 @@ def main() -> None:
     application.add_handler(helpadm_handler) # Команда помощи для админа
     application.add_handler(getdb_handler) # Команда для получения БД
     application.add_handler(globalmessage_handler) # Команда для глобальной рассылки
-    application.add_handler(member_update_handler) # Обработчик входа/выхода/бана
+    application.add_handler(cdcheck_handler) # Команда для проверки кулдауна
+    application.add_handler(ban_reply) # Обработчик входа/выхода/бана
+    application.add_handler(group_reply_handler) # Случайные ответы в группе
     application.add_handler(media_handler)
     application.add_handler(echo_handler) # Общий обработчик текста ставим в конце
 

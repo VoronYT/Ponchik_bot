@@ -166,7 +166,7 @@ def safe_fallback() -> str:
 
 # --- ОБЩАЯ ФУНКЦИЯ ---
 
-def filter_and_validate_response(response: str, user_query: Optional[str] = None) -> Tuple[str, bool]:
+def filter_and_validate_response(response: str, user_query: Optional[str] = None, is_group_reply: bool = False) -> Tuple[str, bool]:
     suppress, reason = should_suppress_response(response)
 
     if suppress:
@@ -175,5 +175,12 @@ def filter_and_validate_response(response: str, user_query: Optional[str] = None
             log_message += f"\nЗапрос: {user_query}"
         logger.warning(log_message)
         return safe_fallback(), True
+    
+    # Дополнительная проверка для групповых ответов
+    if is_group_reply:
+        # Если в ответе есть латинские буквы, считаем это англоязычным отказом.
+        if re.search(r'[a-zA-Z]', response):
+            logger.info(f"Ответ для группы отфильтрован как англоязычный отказ: {response[:100]}")
+            return "", True # Возвращаем пустую строку и флаг фильтрации
 
     return response, False
